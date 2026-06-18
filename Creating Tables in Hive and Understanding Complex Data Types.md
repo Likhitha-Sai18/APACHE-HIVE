@@ -1,0 +1,522 @@
+# Creating Tables in Hive and Understanding Complex Data Types
+
+## Introduction
+
+After creating a database in Hive, the next step is creating tables to store data.
+
+A table defines:
+
+* What data will be stored
+* How the data will be organized
+* What data types each column contains
+
+Unlike traditional relational databases, Hive supports not only primitive data types such as INT, STRING, and DATE but also **complex data types** like:
+
+* MAP
+* STRUCT
+* ARRAY
+
+These complex types allow Hive to store semi-structured and hierarchical data efficiently.
+
+---
+
+# Creating a Table in Hive
+
+## Purpose of a Table
+
+A table acts as a schema or blueprint for the data.
+
+It tells Hive:
+
+* Column names
+* Data types
+* Structure of records
+
+Before inserting data, Hive must know how that data is organized.
+
+---
+
+## Basic Syntax
+
+```sql
+CREATE TABLE table_name (
+    column_name datatype,
+    column_name datatype
+);
+```
+
+### Example
+
+```sql
+CREATE TABLE employee (
+    emp_id INT,
+    emp_name STRING
+);
+```
+
+This creates a simple employee table with two columns.
+
+---
+
+# Employee Table Example
+
+The transcript introduces a more advanced employee table that uses Hive's complex data types.
+
+The employee information is divided into four major sections:
+
+```text
+Employee
+│
+├── Name
+├── Personal Information
+├── Job Information
+└── Department History
+```
+
+Instead of creating dozens of individual columns, Hive allows related information to be grouped using complex data types.
+
+---
+
+# Complex Data Types in Hive
+
+## Why Complex Data Types?
+
+In real-world applications, data is often hierarchical.
+
+Example:
+
+```text
+Employee
+│
+├── First Name
+├── Last Name
+├── Birth Date
+├── Gender
+├── Department
+└── Previous Departments
+```
+
+Storing such data using only primitive columns can become cumbersome.
+
+Hive provides complex data types to represent such structures naturally.
+
+---
+
+# MAP Data Type
+
+## What is a MAP?
+
+A MAP stores data as **key-value pairs**.
+
+Think of it like a dictionary.
+
+Example:
+
+```text
+{
+   "firstname" : "John",
+   "lastname"  : "Smith"
+}
+```
+
+Each key maps to a value.
+
+---
+
+## Employee Name Column
+
+The transcript defines:
+
+```sql
+name MAP<STRING, STRING>
+```
+
+Meaning:
+
+```text
+Key         Value
+--------------------
+firstname → John
+lastname  → Smith
+```
+
+---
+
+## Why Use MAP Here?
+
+Instead of creating separate columns:
+
+```sql
+firstname STRING,
+lastname STRING
+```
+
+both values are grouped into a single logical column.
+
+This is useful when:
+
+* Number of attributes may vary
+* Key-value relationships exist
+* Semi-structured data is stored
+
+---
+
+## Key Characteristics of MAP
+
+* Stores key-value pairs
+* Keys must be unique
+* Both key and value have data types
+* Similar to HashMap in Java
+
+---
+
+# STRUCT Data Type
+
+## What is a STRUCT?
+
+A STRUCT is a collection of related fields grouped together.
+
+It behaves similarly to an object in programming.
+
+Example:
+
+```text
+Person
+│
+├── Birth Date
+└── Gender
+```
+
+Instead of storing each field separately, they are grouped into a single structure.
+
+---
+
+# Employee Personal Information
+
+The transcript defines:
+
+```sql
+info STRUCT<
+    birth_date:DATE,
+    gender:STRING
+>
+```
+
+Representation:
+
+```text
+info
+│
+├── birth_date
+└── gender
+```
+
+Example Value:
+
+```text
+{
+   birth_date : 1998-05-10,
+   gender     : Female
+}
+```
+
+---
+
+## Why Use STRUCT?
+
+It logically groups related attributes.
+
+Instead of:
+
+```sql
+birth_date DATE,
+gender STRING
+```
+
+they become:
+
+```sql
+info.birth_date
+info.gender
+```
+
+which improves organization.
+
+---
+
+# Job Information Using STRUCT
+
+The transcript introduces another STRUCT column.
+
+```sql
+job STRUCT<
+    hire_date:DATE,
+    dept_no:STRING,
+    dept_name:STRING,
+    salary:INT
+>
+```
+
+---
+
+## Structure
+
+```text
+job
+│
+├── hire_date
+├── dept_no
+├── dept_name
+└── salary
+```
+
+Example:
+
+```text
+{
+   hire_date : 2020-01-15,
+   dept_no   : D101,
+   dept_name : IT,
+   salary    : 60000
+}
+```
+
+---
+
+## Important Observation
+
+A STRUCT can contain multiple data types.
+
+Example:
+
+| Field     | Type   |
+| --------- | ------ |
+| hire_date | DATE   |
+| dept_no   | STRING |
+| dept_name | STRING |
+| salary    | INT    |
+
+This flexibility makes STRUCT extremely useful for representing entities.
+
+---
+
+# ARRAY Data Type
+
+## What is an ARRAY?
+
+An ARRAY stores multiple values of the same data type in an ordered list.
+
+Example:
+
+```text
+[10,20,30]
+```
+
+or
+
+```text
+["HR","IT","Finance"]
+```
+
+---
+
+# Department History Example
+
+The transcript defines:
+
+```sql
+dept_history ARRAY<STRING>
+```
+
+Purpose:
+
+Store all departments an employee has previously worked in.
+
+Example:
+
+```text
+[
+   "HR",
+   "Finance",
+   "IT"
+]
+```
+
+---
+
+## Why ARRAY?
+
+An employee may belong to multiple departments during their career.
+
+Creating separate columns such as:
+
+```sql
+dept1
+dept2
+dept3
+dept4
+```
+
+would be inefficient.
+
+ARRAY provides a cleaner and scalable solution.
+
+---
+
+# Complete Table Structure
+
+The employee table being created in the transcript can be visualized as:
+
+```text
+Employee Table
+│
+├── name (MAP)
+│     ├── firstname
+│     └── lastname
+│
+├── info (STRUCT)
+│     ├── birth_date
+│     └── gender
+│
+├── job (STRUCT)
+│     ├── hire_date
+│     ├── dept_no
+│     ├── dept_name
+│     └── salary
+│
+└── dept_history (ARRAY)
+       ├── HR
+       ├── Finance
+       └── IT
+```
+
+This demonstrates Hive's ability to store nested and hierarchical data structures.
+
+---
+
+# Table Comments
+
+Hive allows developers to add comments while creating tables.
+
+## Purpose
+
+Comments help describe:
+
+* Table purpose
+* Data meaning
+* Business context
+
+Example:
+
+```sql
+COMMENT 'Employee Information Table'
+```
+
+---
+
+## Why Are Comments Useful?
+
+In enterprise environments:
+
+* Hundreds of tables may exist.
+* New team members need documentation.
+* Data engineers must understand table purpose quickly.
+
+Comments improve maintainability and readability.
+
+---
+
+# Advantages of Complex Data Types
+
+### Better Representation of Real-World Data
+
+Data naturally contains nested structures.
+
+### Reduced Number of Columns
+
+Related information can be grouped together.
+
+### Easier Data Organization
+
+Logical grouping improves readability.
+
+### Support for Semi-Structured Data
+
+Useful when working with JSON-like data.
+
+---
+
+# Limitations
+
+### More Complex Queries
+
+Accessing nested fields requires additional syntax.
+
+### Learning Curve
+
+Beginners often find MAP and STRUCT confusing.
+
+### Schema Design Complexity
+
+Improper use may reduce query readability.
+
+---
+
+# Interview Questions
+
+### What are Complex Data Types in Hive?
+
+Complex data types allow storage of nested and collection-based data structures.
+
+Examples:
+
+* MAP
+* STRUCT
+* ARRAY
+
+---
+
+### Difference Between MAP and STRUCT?
+
+| MAP                   | STRUCT             |
+| --------------------- | ------------------ |
+| Key-value pairs       | Fixed named fields |
+| Dynamic keys          | Predefined fields  |
+| Similar to dictionary | Similar to object  |
+
+---
+
+### What is ARRAY in Hive?
+
+An ARRAY stores multiple values of the same data type in an ordered collection.
+
+---
+
+### Why are STRUCT data types useful?
+
+They logically group related fields into a single column.
+
+---
+
+### Why use comments in tables?
+
+To document table purpose and improve maintainability.
+
+---
+
+# Quick Revision
+
+* Tables define schema for Hive data.
+* Hive supports primitive and complex data types.
+* MAP stores key-value pairs.
+* STRUCT groups related fields together.
+* ARRAY stores multiple values of the same type.
+* Complex types help represent hierarchical data.
+* Employee table example uses MAP, STRUCT, and ARRAY together.
+* Comments provide documentation for tables.
+
+---
+
+# One-Line Recall
+
+**Hive tables can store complex real-world data efficiently using MAP, STRUCT, and ARRAY data types, allowing hierarchical information to be represented within a single table schema.**
