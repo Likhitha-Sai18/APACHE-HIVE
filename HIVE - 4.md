@@ -1,0 +1,690 @@
+# Loading Data into Hive Tables and Understanding Managed vs External Tables
+
+## Introduction
+
+Creating a table in Hive only defines the structure (schema) of the data. The table remains empty until actual data is loaded into it.
+
+This topic covers:
+
+* Loading files into Hive
+* Moving data from Local Storage → HDFS → Hive
+* Understanding where Hive stores table data
+* Inspecting table metadata using DESCRIBE commands
+* Difference between Managed and External Tables
+
+These concepts are extremely important because Hive is fundamentally a **schema-on-data system**, where data is stored in HDFS while Hive manages metadata about that data.
+
+---
+
+# How Hive Stores Data
+
+Before loading data, it is important to understand how Hive works internally.
+
+Hive does **not store data inside tables like a traditional database**.
+
+Instead:
+
+```text
+Hive Table
+     ↓
+Metadata
+     ↓
+HDFS Files
+```
+
+Actual data is stored as files in HDFS.
+
+Hive only stores:
+
+* Table names
+* Column definitions
+* Data types
+* File locations
+* Table properties
+
+inside the Metastore.
+
+---
+
+# Loading Data into Hive: Overall Workflow
+
+The transcript follows this workflow:
+
+```text
+Local File
+    ↓
+Upload to Lab Environment
+    ↓
+Unzip Data File
+    ↓
+Copy File to HDFS
+    ↓
+Load File into Hive Table
+    ↓
+Hive Creates Table Directory
+    ↓
+Data Becomes Queryable
+```
+
+This is the standard process followed in many Hadoop environments.
+
+---
+
+# Step 1: Unzipping the Data File
+
+The employee data is initially provided as a ZIP file.
+
+Before Hive can read it, the file must be extracted.
+
+## Command
+
+```bash
+unzip file.zip -d destination_directory
+```
+
+### Purpose
+
+* Extract compressed files
+* Make raw data available for processing
+
+### Example
+
+```bash
+unzip employees.zip -d /home/training/
+```
+
+After extraction:
+
+```text
+employees.txt
+```
+
+becomes available.
+
+---
+
+# Understanding the Employee Data File
+
+The transcript shows a text file containing employee records.
+
+The file contains different separators because the Hive table uses complex data types.
+
+### Comma (,)
+
+Separates fields.
+
+Example:
+
+```text
+101,John
+```
+
+---
+
+### Dollar Symbol ($)
+
+Used to separate collection items.
+
+Example:
+
+```text
+HR$Finance$IT
+```
+
+represents multiple values.
+
+---
+
+### Colon (:)
+
+Used in MAP data types.
+
+Example:
+
+```text
+firstname:John
+lastname:Smith
+```
+
+This represents key-value pairs.
+
+---
+
+## Why Different Delimiters?
+
+Hive supports:
+
+* MAP
+* STRUCT
+* ARRAY
+
+These complex data types require different separators to distinguish nested values.
+
+---
+
+# Step 2: Copying Data into HDFS
+
+Before Hive can use the file, it must be placed inside HDFS.
+
+## Command
+
+```bash
+hdfs dfs -put source destination
+```
+
+### Purpose
+
+Copies a file from local storage to HDFS.
+
+### Example
+
+```bash
+hdfs dfs -put employees.txt /
+```
+
+### Internal Working
+
+```text
+Local File System
+        ↓
+hdfs dfs -put
+        ↓
+HDFS
+```
+
+The file now becomes available to Hadoop and Hive.
+
+---
+
+# Verifying File Upload
+
+After copying the file, we can verify its presence.
+
+## Command
+
+```bash
+hdfs dfs -ls directory
+```
+
+### Example
+
+```bash
+hdfs dfs -ls /
+```
+
+Output:
+
+```text
+employees.txt
+```
+
+This confirms that the file exists in HDFS.
+
+---
+
+# Loading Data into Hive Table
+
+Once the file exists in HDFS, Hive can load it into a table.
+
+## Syntax
+
+```sql
+LOAD DATA INPATH 'path'
+INTO TABLE table_name;
+```
+
+### Example
+
+```sql
+LOAD DATA INPATH '/user/training/employees.txt'
+INTO TABLE m;
+```
+
+### Purpose
+
+Associates the file with the Hive table.
+
+After execution:
+
+```text
+employees.txt
+        ↓
+Hive Table
+```
+
+The data becomes queryable through Hive.
+
+---
+
+# What Happens Internally During LOAD DATA?
+
+Many beginners think Hive copies every record into a database.
+
+That is not what happens.
+
+Hive performs:
+
+### Step 1
+
+Reads metadata of the table.
+
+### Step 2
+
+Creates a storage location for the table.
+
+### Step 3
+
+Moves or associates the file with that location.
+
+### Step 4
+
+Updates metadata.
+
+### Step 5
+
+Table becomes available for querying.
+
+---
+
+# Hive Warehouse Directory
+
+Hive maintains a warehouse directory in HDFS.
+
+Typical location:
+
+```text
+/user/hive/warehouse
+```
+
+This is the default storage location for Hive-managed tables.
+
+---
+
+# Database Directory Creation
+
+Suppose we created:
+
+```sql
+CREATE DATABASE demo_01;
+```
+
+Hive creates:
+
+```text
+demo_01.db
+```
+
+inside the warehouse.
+
+Example:
+
+```text
+warehouse
+    │
+    └── demo_01.db
+```
+
+---
+
+# Table Directory Creation
+
+Suppose we create table:
+
+```sql
+CREATE TABLE m (...);
+```
+
+Hive creates:
+
+```text
+warehouse
+   │
+   └── demo_01.db
+           │
+           └── m
+```
+
+The table directory stores the table data.
+
+---
+
+# Data File Storage
+
+After loading:
+
+```text
+warehouse
+   │
+   └── demo_01.db
+           │
+           └── m
+                 │
+                 └── employees.txt
+```
+
+This is where Hive actually reads data from.
+
+Whenever queries run:
+
+```sql
+SELECT * FROM m;
+```
+
+Hive reads:
+
+```text
+employees.txt
+```
+
+from the table directory.
+
+---
+
+# DESCRIBE Command
+
+Once a table is created, we often need to inspect its structure.
+
+## Syntax
+
+```sql
+DESCRIBE table_name;
+```
+
+### Example
+
+```sql
+DESCRIBE m;
+```
+
+### Purpose
+
+Displays:
+
+* Column names
+* Data types
+
+Example Output:
+
+```text
+name          map<string,string>
+info          struct
+job           struct
+dept_history  array<string>
+```
+
+---
+
+# DESCRIBE EXTENDED
+
+Provides additional metadata.
+
+## Syntax
+
+```sql
+DESCRIBE EXTENDED table_name;
+```
+
+### Example
+
+```sql
+DESCRIBE EXTENDED m;
+```
+
+Additional information includes:
+
+* Table properties
+* Metadata
+* Storage details
+
+---
+
+# DESCRIBE FORMATTED
+
+The most commonly used version.
+
+## Syntax
+
+```sql
+DESCRIBE FORMATTED table_name;
+```
+
+### Example
+
+```sql
+DESCRIBE FORMATTED m;
+```
+
+Provides detailed information in a readable format.
+
+---
+
+## Information Available
+
+### Table Information
+
+```text
+Database
+Owner
+Creation Time
+```
+
+---
+
+### Storage Information
+
+```text
+Location
+Input Format
+Output Format
+```
+
+---
+
+### Table Type
+
+```text
+Managed Table
+External Table
+```
+
+---
+
+### File Information
+
+```text
+Storage Details
+Serialization Information
+```
+
+---
+
+# Managed Tables
+
+The next topic introduced in the transcript is Managed Tables.
+
+## Definition
+
+A Managed Table is a table whose data lifecycle is completely controlled by Hive.
+
+Hive manages:
+
+* Metadata
+* Data files
+
+Both are owned by Hive.
+
+---
+
+## Storage Location
+
+Usually stored inside:
+
+```text
+/user/hive/warehouse
+```
+
+---
+
+## Managed Table Structure
+
+```text
+Hive
+ │
+ ├── Metadata
+ │
+ └── Data Files
+```
+
+Hive owns everything.
+
+---
+
+## What Happens If Table Is Dropped?
+
+Example:
+
+```sql
+DROP TABLE employee;
+```
+
+Result:
+
+```text
+Metadata Deleted
+Data Deleted
+```
+
+Everything is removed.
+
+---
+
+# Why Managed Tables Are Useful
+
+Suitable when:
+
+* Hive owns the data
+* Temporary datasets
+* ETL intermediate outputs
+* Internal analytics
+
+---
+
+# External Tables
+
+The transcript begins introducing External Tables.
+
+## Definition
+
+An External Table is a Hive table whose data exists outside Hive's warehouse directory.
+
+Hive only manages metadata.
+
+The data remains independently stored.
+
+---
+
+## Storage Location
+
+Can be:
+
+```text
+HDFS Directory
+S3 Bucket
+Cloud Storage
+Azure Storage
+```
+
+Any location outside Hive warehouse.
+
+---
+
+## External Table Structure
+
+```text
+Hive
+ │
+ └── Metadata
+
+Data
+ │
+ └── External Location
+```
+
+Hive knows where the data is but does not own it.
+
+---
+
+# Why External Tables Exist
+
+In many organizations:
+
+* Multiple systems use the same data.
+* Data is stored centrally.
+* Hive should not delete that data accidentally.
+
+External tables solve this problem.
+
+---
+
+# Managed vs External Tables
+
+| Feature            | Managed Table           | External Table         |
+| ------------------ | ----------------------- | ---------------------- |
+| Data Ownership     | Hive                    | External System        |
+| Metadata Ownership | Hive                    | Hive                   |
+| Default Location   | Hive Warehouse          | Custom Location        |
+| Drop Table         | Deletes Data + Metadata | Deletes Metadata Only  |
+| Use Case           | Internal Processing     | Shared Enterprise Data |
+
+---
+
+# Interview Questions
+
+### What does LOAD DATA INPATH do?
+
+Loads a file from HDFS into a Hive table.
+
+---
+
+### Where are Managed Tables stored?
+
+Inside Hive warehouse directory.
+
+---
+
+### What is the purpose of DESCRIBE?
+
+Displays table schema information.
+
+---
+
+### Difference between DESCRIBE and DESCRIBE FORMATTED?
+
+DESCRIBE shows schema only, while DESCRIBE FORMATTED shows detailed metadata and storage information.
+
+---
+
+### Difference between Managed and External Tables?
+
+Managed tables are fully controlled by Hive, whereas external tables only use Hive metadata while data remains outside Hive control.
+
+---
+
+# Quick Revision
+
+* Data is first uploaded and extracted.
+* Files are copied into HDFS using `hdfs dfs -put`.
+* Hive loads data using `LOAD DATA INPATH`.
+* Hive stores table data inside warehouse directories.
+* Every database has its own `.db` directory.
+* Every table gets its own directory.
+* `DESCRIBE` shows schema information.
+* `DESCRIBE FORMATTED` shows complete metadata.
+* Managed tables are fully owned by Hive.
+* External tables store data outside Hive warehouse.
+
+---
+
+# One-Line Recall
+
+**Hive loads HDFS files into table locations, manages metadata through the Metastore, and supports both Managed Tables (Hive-owned data) and External Tables (externally managed data).**
